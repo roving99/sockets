@@ -1,0 +1,11 @@
+md25Robot with Pi.
+
+20131215
+
+installed mjpg-streamer (linuxuser #133)
+updated rc.local with exports and to start streamer automatically
+
+srv_md25robot.py now accepts JSON RPC calls to operate.
+srv_mapper.py now included in src_md25robot.py.
+
+
