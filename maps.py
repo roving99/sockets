@@ -2,111 +2,18 @@
 
 import math
 
-class Map:         # array of points theta, r, variance
-                   # margins in theta and r
-
-    def __init__(self):
-        self.map = []
-        self.length = 0
-        self.x = 0.0
-        self.y = 0.0
-        self.theta = 0.0 
-        pass
-    
-    def clear():
-        self.map = []
-        self.length = 0
-
-    def asString(self):
-        for pair in self.map:
-            print pair
-
-    def add(self,coords):    # coords is an array [theta, r, time]
-        if len(coords)<3:
-            coords.append(0)
-        self.map.append(coords)
-
-    def addRect(self,coords):    # coords is an array [x, y, time]
-        x = coords[0]
-        y = coords[1]
-        theta, r = polar(x,y)
-        coords[0] = theta
-        coords[1] = r
-        if len(coords)<3:
-            coords.append(0)
-        self.map.append(coords)
-
-    def replace(self,coords, delta=math.pi/16): # replace all vectors within delta of coords[0] with coords.
-        self.map = self.notList(coords[0],delta)
-        self.add(coords)
-    
-    def listIndices(self,theta, delta = 0.2*math.pi): # list all indicess within delta of theta.
-        result = []
-        for v in range(len(self.map)):
-            angle = self.map[v][0]
-            if abs(difference(theta,angle))<delta:
-                result.append(v)
-        return result
-
-    def list(self,theta=None, delta = 0.2*math.pi): # list all vectors, or only vectors within delta of theta.
-        result = []
-        for v in self.map:
-            if theta==None:
-                result.append(v)
-            else:
-                if abs(difference(theta,v[0]))<delta:
-                    result.append(v)
-                pass
-        return result
-
-    def listRect(self,theta=None, delta = 0.2*math.pi): # list all vectors RECTANGULAR, or only vectors within delta of theta.
-        result = []
-        for v in self.map:
-            th = v[0]
-            r  = v[1]
-            if theta==None:
-                result.append([r*math.cos(th), r*math.sin(th),v[2]])
-            else:
-                if abs(difference(theta,v[0]))<delta:
-                    result.append([r*math.cos(th), r*math.sin(th),v[2]])
-                pass
-        return result
-
-    def notList(self,theta=None, delta = 0.2*math.pi): # list all vectors, or only vectors outside delta of theta.
-        result = []
-        for v in self.map:
-            if theta==None:
-                result.append(v)
-            else:
-                if abs(difference(theta,v[0]))>delta:
-                    result.append(v)
-                pass
-        return result
-
-    def notListRect(self,theta=None, delta = 0.2*math.pi): # list all vectors, or only vectors outside delta of theta.
-        result = []
-        for v in self.map:
-            th = v[0]
-            r  = v[1]
-            if theta==None:
-                result.append([r*math.cos(th), r*math.sin(th),v[2]])
-            else:
-                if abs(difference(theta,v[0]))>delta:
-                    result.append([r*math.cos(th), r*math.sin(th),v[2]])
-                pass
-        return result
-
-#==========================================================================================
 class SonarMap:         # array of gaussians
 
-    def __init__(self):
+    def __init__(self, pose, time):
         self.map = []
+        self.pose = pose
+        self.time = time
         self.length = 0
         self.x = 0.0
         self.y = 0.0
         self.theta = 0.0 
         for i in range(0,64):
-            self.map.append(Gaussian(300,300))
+            self.map.append(Gaussian(0,300))
         pass
     
     def clear():
@@ -143,6 +50,18 @@ class SonarMap:         # array of gaussians
         l = []
         for i in range(0,64):
             l.append([self.map[i].mean,self.map[i].var])
+        return l
+
+    def listRect(self, absolute = False):
+        l = []
+        if absolute:
+            x = self.pose[0]
+            y = self.pose[1]
+        else:
+            x = 0.
+            y = 0. 
+        for i in range(0,64):
+            l.append([self.map[i].mean*math.sin(slotToTheta(i))+x, self.map[i].mean*math.cos(slotToTheta(i))+y])
         return l
 
 #==========================================================================================

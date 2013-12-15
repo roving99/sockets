@@ -57,7 +57,7 @@ class ServerThread(Thread):
 
     def clientThread(self, conn, addr, func):
         while True:
-            data = conn.recv(1024)
+            data = conn.recv(1024*4)
             if not data:
                 break
             message = func(self, conn, addr, data)
@@ -105,7 +105,7 @@ class Server:
 
     def recv(self):
         if self.conn:
-            string = self.conn.recv(1024)
+            string = self.conn.recv(1024*4)
             if not string:
                 return None
         else:
@@ -135,7 +135,7 @@ class Client:
         self.sock.connect((self.host, self.port))
 
     def recv(self):
-        string = self.sock.recv(1024)
+        string = self.sock.recv(1024*4)
         return string
 
     def send(self, message):

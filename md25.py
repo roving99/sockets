@@ -8,6 +8,7 @@ import time
 import wii
 import sonar
 import bumpers
+import maps
 
 MD25_SPEED    = 0
 MD25_ROTATE   = 1
@@ -91,6 +92,7 @@ class Md25(robot.Robot):
         self.x = 0.0
         self.y = 0.0
         self.theta = 0.0
+        self.SonarMap = None
 
         self.safe = True                # prevent forward motion if bump or cliff sensors active
 
@@ -103,9 +105,9 @@ class Md25(robot.Robot):
         """
         reset robot. zero location.
         """
-	self._send(MD25_COMMAND, 0x20)		# reset counters
-	self._send(MD25_COMMAND, 0x31)		# set automatic speed regulation
-	self._send(MD25_MODE, 0x02)		# set mode to speed, turn. Centre = 128
+        self._send(MD25_COMMAND, 0x20)		# reset counters
+        self._send(MD25_COMMAND, 0x31)		# set automatic speed regulation
+        self._send(MD25_MODE, 0x02)		# set mode to speed, turn. Centre = 128
         self._lastTranslate = 0
         self._lastRotate = 0
         self.last_encoder1 = 0
@@ -115,6 +117,7 @@ class Md25(robot.Robot):
         self.x = 0.0
         self.y = 0.0
         self.theta = 0.0
+        self.newSonarMap()
 
         print 'Robot ready'
 
@@ -187,6 +190,15 @@ class Md25(robot.Robot):
     def getMotors(self):
         print "getMotors NOT IMPLEMENTED"
         return [1000.0,1000.0]
+
+    def newSonarMap(self):
+        self.sonarMap = maps.SonarMap([self.x, self.y, self.theta], self._getTime(0))
+
+    def getSonarMap(self):
+        l = [[self.x, self.y, self.theta]]
+        l.append(self.time)
+        l.append(self.sonarMap.list())
+        return l
 
 # MOVEMENT functions =============================================================================
 
@@ -281,9 +293,12 @@ class Md25(robot.Robot):
                             "motion" : self.get("motion", False), 
                             "time"   : self.get("time", False), 
                             "camera" : self.get("camera", False), 
-			    }
+			                 }
+                elif sensor == "sonarmaprect":           # 
+                    return self.sonarMap.listRect()
                 else:
-                    raise ("invalid sensor name: '%s'" % sensor)
+                    print "invalid sensor name: '%s'" % (sensor)
+                    return None
             for position in positions:
                 if position in ["left", "right"]:
                      position = ["left", "right"].index(position)
@@ -312,7 +327,7 @@ class Md25(robot.Robot):
                 elif sensor == "camera":
                     retvals.append(self._getCamera(position))
                 else:
-                    raise ("invalid sensor name: '%s'" % sensor)
+                    print "invalid sensor name: '%s'" % (sensor)
             if len(retvals) == 1:
                 return retvals[0]
             else:
@@ -349,6 +364,8 @@ class Md25(robot.Robot):
 
         self.sensor['motion']   = [self.getTranslate(), self.getRotate()]
         self.sensor['time']   = self._getTime(0)
+        self.sonarMap.setAll(self.sensor['pose'][2], (self.sensor['sonar']))
+
         if self.safe:
             if (True in self.sensor['bump'] or True in self.sensor['cliff']) and (self.sensor['motion'][0]>0.0 or self.sensor['motion'][1]!=0.0):
                 self.stop()

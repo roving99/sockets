@@ -29,6 +29,8 @@ coordSystem = [ '         0          ',
 		'      +pi -pi       ',
 		]
 
+sonarMap = None
+
 def update(screen, data):
     for label in gauges.keys():
         line = gauges[label]
@@ -56,28 +58,48 @@ def update(screen, data):
                 screen.addstr(y, x, text, c.A_DIM) 
 
     # coord system diagram
-    y=15
-    x=60
+    y=16
+    x=1
     for i in range(len(coordSystem)):
         screen.addstr(y+i,x,coordSystem[i])
     # raw data
     x = 1
-    y = 25
+    y = 26
     for key in data.keys():
         d = data[key]
         screen.addstr(y,x, str(key).rjust(10)+"  "+str(data[key]).ljust(40))
         y += 1
+#    screen.addstr(y,x,str(sonarMap))
 
+def updateMap(screen, map):
+    width = 50
+    height = 30
+    range_ = 100 # cm
+    for i in range(height):
+        screen.addstr(i, 60, " "*width)
+    if sonarMap:
+        for hit in sonarMap:
+            y = int(hit[1]*((height/2.)/range_))
+            x = int(hit[0]*((width/2.)/range_))
+            if abs(y)<(height/2) and abs(x)<(width/2):
+                screen.addstr(int((height/2) - y), int(60 + (width/2) - x), "+")
+
+def make_json_rpc(method, params, id):
+    return json.dumps({"method":method, "params":params, "id":id})
 
 def main(screen, client):
-    screen.addstr("MD25 robot control 0.1\n\n") 
+    global sonarMap
+    id = 1000
+    screen.addstr("MD25 robot control 0.2\n\n") 
     screen.nodelay(1)
     while True: 
-        client.send(json.dumps([]))
+        client.send(make_json_rpc("get", "all", id))
         message = client.recv()
         data = json.loads(message)
-        world = data[0]
+        world = data["result"]
+    
         update(screen, world)
+        updateMap(screen, sonarMap)
         event = screen.getch() 
         screen.addstr(15,0,str(event)+"   ")
 
@@ -86,31 +108,38 @@ def main(screen, client):
         tran = world['motion'][0]
         rot  = world['motion'][1]
         if event == 32:
-            client.send(json.dumps({'motion':[0.0,0.0]}))		# ALL STOP
+            client.send(make_json_rpc("stop", None, id))
             message = client.recv()
 
         if event == 259 and tran<1.0:		# forward
-            client.send(json.dumps({'motion':[tran+0.2,rot]}))		# ALL STOP
+            client.send(make_json_rpc("move", [tran+0.2,rot], id))
             message = client.recv()
         if event == 258 and tran>-1.0:		# reverse
-            client.send(json.dumps({'motion':[tran-0.2,rot]}))		# ALL STOP
+            client.send(make_json_rpc("move", [tran-0.2,rot], id))
             message = client.recv()
         if event == 261 and rot<1.0:		# rotate right
-            client.send(json.dumps({'motion':[tran,rot+0.2]}))		# ALL STOP
+            client.send(make_json_rpc("move", [tran,rot+0.2], id))
             message = client.recv()
         if event == 260 and rot>-1.0:		# rotate left
-            client.send(json.dumps({'motion':[tran,rot-0.2]}))		# ALL STOP
+            client.send(make_json_rpc("move", [tran,rot-0.2], id))
+            message = client.recv()
+
+        if event == ord('m'): 			# reset map
+            client.send(make_json_rpc("get", "sonarMapRect", id))
+            message = client.recv()
+            sonarMap = json.loads(message)['result']
+        if event == ord('M'): 			# reset map
+            client.send(make_json_rpc("resetMap", None, id))
             message = client.recv()
 
         if event == ord('r'): 			# reset all
-            client.send(json.dumps({'motion':[0.0,0.0]}))		# ALL STOP
-            message = client.recv()
-            client.send(json.dumps({'pose':[0.0,0.0,0.0]}))		# ALL STOP
+            client.send(make_json_rpc("reset", None, id))
             message = client.recv()
         time.sleep(0.05)
 
 HOST = ''
 PORT = 9888
+
 
 client = messaging.Client(HOST, PORT)
 
